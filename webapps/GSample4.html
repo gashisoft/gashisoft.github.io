@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Googleでログイン デモ</title>
+    <!-- Tailwind CSS for styling the UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Identity Services Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-8 space-y-6">
+        <div class="text-center space-y-1">
+            <h1 class="text-2xl font-bold text-gray-900">アカウントへのサインイン</h1>
+            <p class="text-sm text-gray-500">Googleアカウントを使用してログインしてください</p>
+        </div>
+
+        <!-- Error Message Display Area (Initially Hidden) -->
+        <div id="error-message" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start space-x-2">
+            <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <div>
+                <span class="font-semibold block">ログインに失敗しました</span>
+                <span id="error-text" class="text-xs text-red-600">認証中にエラーが発生しました。もう一度お試しください。</span>
+            </div>
+        </div>
+
+        <!-- Google Sign-In Button Container -->
+        <div class="flex flex-col items-center justify-center my-4 space-y-3">
+            <div id="g_id_onload"
+                 data-client_id="275727004859-5vd468f4b72mvmkkiq8d9k4urke7vant.apps.googleusercontent.com"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false"
+                 data-itp_support="true">
+            </div>
+
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="outline"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left">
+            </div>
+        </div>
+
+        <!-- User Profile Display Area (Initially Hidden) -->
+        <div id="user-profile" class="hidden border-t border-gray-100 pt-5 space-y-3">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">ログイン成功ユーザー情報</h2>
+            <div class="flex items-center space-x-3 bg-gray-50 p-3.5 rounded-xl border border-gray-100">
+                <img id="user-picture" src="" alt="プロフィール画像" class="w-11 h-11 rounded-full object-cover shadow-sm">
+                <div class="overflow-hidden">
+                    <p id="user-name" class="text-sm font-semibold text-gray-900 truncate"></p>
+                    <p id="user-email" class="text-xs text-gray-500 truncate"></p>
+                </div>
+            </div>
+            <button onclick="handleLogout()" class="w-full mt-2 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors">
+                ログアウト（リセット）
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Google authentication response handler
+        function handleCredentialResponse(response) {
+            console.log("Encoded JWT ID token received.");
+            
+            try {
+                // Hide any previous errors
+                hideError();
+
+                // Decode the JWT token payload
+                const responsePayload = decodeJwtResponse(response.credential);
+                
+                // Display user information on the UI
+                document.getElementById('user-name').textContent = responsePayload.name;
+                document.getElementById('user-email').textContent = responsePayload.email;
+                document.getElementById('user-picture').src = responsePayload.picture;
+                document.getElementById('user-profile').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Failed to process credentials:", error);
+                showError("トークンの解析またはユーザー情報の取得に失敗しました。");
+            }
+        }
+
+        // Error display helper
+        function showError(message) {
+            const errorBox = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            errorText.textContent = message;
+            errorBox.classList.remove('hidden');
+            document.getElementById('user-profile').classList.add('hidden');
+        }
+
+        // Hide error helper
+        function hideError() {
+            const errorBox = document.getElementById('error-message');
+            errorBox.classList.add('hidden');
+        }
+
+        // Logout / Reset handler
+        function handleLogout() {
+            document.getElementById('user-profile').classList.add('hidden');
+            hideError();
+        }
+
+        // Helper function to decode JWT token
+        function decodeJwtResponse(token) {
+            let base64Url = token.split('.')[1];
+            let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            let jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        // Monitor if GIS script fails to load
+        window.addEventListener('error', function(e) {
+            if (e.target && e.target.src && e.target.src.includes('accounts.google.com/gsi/client')) {
+                showError("Google Identity Services のスクリプトの読み込みに失敗しました。ネットワーク接続を確認してください。");
+            }
+        }, true);
+    </script>
+
+</body>
+</html>
